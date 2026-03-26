@@ -26,22 +26,22 @@ def run(images: ImageSet, properties: CellposeSegProperties, parameters: Cellpos
         return np.zeros((image.shape[0],) + image.shape[1:-1])
 
     if properties.custom_weights:
-        model = models.CellposeModel(gpu=False, pretrained_model=properties.custom_weights, net_avg=False)
+        model = models.CellposeModel(gpu=False, pretrained_model=properties.custom_weights)
     else:
-        model = models.Cellpose(gpu=False, model_type=properties.model, net_avg=False)
+        model = models.CellposeModel(gpu=False, model_type=properties.model)
 
     to_segment_z = list(set(range(image.shape[0])).difference(empty_z_levels))
+    is_3d = properties.model_dimensions == "3D"
     mask = model.eval(
         image[to_segment_z, ...],
-        z_axis=0,
-        channel_axis=len(image.shape) - 1,
+        z_axis=0 if is_3d else None,
+        channel_axis=len(image.shape) - 1 if is_3d else None,
         diameter=parameters.diameter,
         flow_threshold=parameters.flow_threshold,
-        mask_threshold=parameters.mask_threshold,
+        cellprob_threshold=parameters.mask_threshold,
         resample=False,
         min_size=parameters.minimum_mask_size,
-        tile=True,
-        do_3D=(properties.model_dimensions == "3D"),
+        do_3D=is_3d,
     )[0]
     mask = mask.reshape((len(to_segment_z),) + image.shape[1:-1])
     for i in empty_z_levels:
